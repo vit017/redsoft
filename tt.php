@@ -40,7 +40,7 @@ $arFieldsOffer = [
 
 $arFieldsElement["CODE"] = $arFieldsElement["CODE"].time();
 $arPropsOffer = [
-    $SKU::$PROPERTY_BINDING_ID => 352//$productCatalogID["ID"]
+    $SKU::$PROPERTY_BINDING_ID => $productCatalogID["ID"]
 ];
 
 $offer = $SKU->AddOffer(
