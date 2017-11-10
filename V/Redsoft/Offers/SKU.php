@@ -32,8 +32,6 @@ class SKU
 
     public function __construct(int $userID, int $catalogID, int $offersID)
     {
-        \CModule::IncludeModule("catalog");
-
         $this->userID = $userID;
         $this->catalogIBlockID = $catalogID;
         $this->offersIBlockID = $offersID;

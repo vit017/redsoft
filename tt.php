@@ -7,6 +7,7 @@ use V\Redsoft\Offers\SKU;
 require_once($_SERVER['DOCUMENT_ROOT'] . "/bitrix/modules/main/include/prolog_before.php");
 CModule::IncludeModule("iblock");
 CModule::IncludeModule("sale");
+CModule::IncludeModule("catalog");
 
 //$FilesCleaner = new IBlockFilesCleaner(SITE_ID, "/upload/iblock");
 //$arRemovedFiles = $FilesCleaner->RunProcess();
