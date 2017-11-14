@@ -26,4 +26,3 @@ define("BX_DIR_PERMISSIONS", 0755);
 define("BX_DISABLE_INDEX_PAGE", true);
 ?>
 <? require_once $_SERVER["DOCUMENT_ROOT"]."/V/autoload.php"; ?>
-<? require_once $_SERVER["DOCUMENT_ROOT"]."/V/functions.php"; ?>
