@@ -1,5 +1,13 @@
 <?php
 
+/*
+ * Класс для очистки каталога upload/iblock от неиспользуемых файлов
+ *
+ * Сравнивает файлы в директории upload/iblock и в таблице БД b_file.
+ * Производит удаление из указанной директории отсутствующих файлов в таблице b_file.
+ */
+
+
 namespace V\Redsoft\FilesCleaner;
 
 class IBlockFilesCleaner
