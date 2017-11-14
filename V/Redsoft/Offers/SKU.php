@@ -10,9 +10,6 @@ class SKU
     private $catalogIBlockID;
     private $offersIBlockID;
 
-    private $arMeasures = [];
-    private $arCurrencies = [];
-
     public static $IS_AVAILABLE = "Y";
     public static $PROPERTY_BINDING_ID = 31;
 
@@ -29,6 +26,9 @@ class SKU
         "TRIAL" => "T"
     ];
 
+    private static $MEASURES = [];
+    private static $CURRENCIES = [];
+
 
     public function __construct(int $userID, int $catalogID, int $offersID)
     {
@@ -36,16 +36,21 @@ class SKU
         $this->catalogIBlockID = $catalogID;
         $this->offersIBlockID = $offersID;
 
-        $this->DefineMeasures();
-        $this->DefineCurrencies();
+        if (empty(self::$MEASURES)) {
+            $this->DefineMeasures();
+        }
+
+        if (empty(self::$CURRENCIES)) {
+            $this->DefineCurrencies();
+        }
 
         $this->arDefaultFieldsOffer = [
             "AVAILABLE" => self::$IS_AVAILABLE,
-            "PURCHASING_CURRENCY" => $this->GetDefaultCurrency(),
-            "MEASURE" => $this->GetDefaultMeasure(),
+            "PURCHASING_CURRENCY" => $this->GetDefaultCurrency(self::$CURRENCIES),
+            "MEASURE" => $this->GetDefaultMeasure(self::$MEASURES),
             "PRICE_TYPE" => self::$PAYMENTS["DISPOSABLE"],
             "CAN_BUY_ZERO" => "Y",
-            "QUANTITY" => 100
+            "QUANTITY" => $this->GetDefaultQuantity()
         ];
     }
 
@@ -53,7 +58,7 @@ class SKU
     {
         $dbResultList = \CCatalogMeasure::GetList(["ID" => "ASC"], [], false, false, []);
         while ($arResult = $dbResultList->Fetch()) {
-            $this->arMeasures[] = $arResult;
+            self::$MEASURES[] = $arResult;
         }
     }
 
@@ -61,28 +66,33 @@ class SKU
     {
         $dbResultList = \CCurrency::GetList(($by = "NAME"), ($order = "ASC"));
         while ($arResult = $dbResultList->Fetch()) {
-            $this->arCurrencies[] = $arResult;
+            self::$CURRENCIES[] = $arResult;
         }
     }
 
-    private function GetDefaultCurrency(): string {
-        foreach ($this->arCurrencies as $arCurrency) {
+    private function GetDefaultQuantity()
+    {
+        return 100;
+    }
+
+    private function GetDefaultCurrency(array $arCurrencies): string {
+        foreach ($arCurrencies as $arCurrency) {
             if ("Y" === $arCurrency["BASE"]) {
                 return $arCurrency["CURRENCY"];
             }
         }
 
-        return $this->arCurrencies[0]["CURRENCY"];
+        return self::$CURRENCIES[0]["CURRENCY"];
     }
 
-    private function GetDefaultMeasure(): string {
-        foreach ($this->arMeasures as $arMeasure) {
+    private function GetDefaultMeasure(array $arMeasures): string {
+        foreach ($arMeasures as $arMeasure) {
             if ("Y" === $arMeasure["IS_DEFAULT"]) {
                 return $arMeasure["ID"];
             }
         }
 
-        return $this->arMeasures[0]["ID"];
+        return self::$MEASURES[0]["ID"];
     }
 
     public function AddProduct(array $arFields, array $arProps, bool $isOffer = false): array
@@ -126,7 +136,4 @@ class SKU
 
         return ["RESULT" => \CCatalogProduct::Add($arFieldsOffer)];
     }
-
-
-
 }

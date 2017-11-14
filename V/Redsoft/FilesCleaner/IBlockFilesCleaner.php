@@ -5,15 +5,12 @@ namespace V\Redsoft\FilesCleaner;
 class IBlockFilesCleaner
 {
     private $docRoot = "";
-    private $siteID = "";
-    private $iblockFilesDir = "";
-    private $regexpSectionUserFields = "/^IBLOCK_[\d]+_SECTION$/";
-    private $propertyFileType = "F";
+    private $bxFilesDir = "/upload";
+    private $iblockFilesDir = "/upload/iblock";
 
-    public function __construct(string $siteID, string $iblockFilesDir)
+
+    public function __construct()
     {
-        $this->siteID = $siteID;
-        $this->iblockFilesDir = $iblockFilesDir;
         $this->docRoot = $_SERVER["DOCUMENT_ROOT"];
     }
 
@@ -25,23 +22,22 @@ class IBlockFilesCleaner
 
     private function FindOldFiles(): array
     {
-        $arIBlocksID = $this->GetIBlocksID();
+        $arIBlocksFiles = $this->GetIBlocksFiles();
         $arDirFiles = $this->GetDirFiles();
-        $arIBlocksFiles = $this->GetIBlocksFiles($arIBlocksID);
 
         return $this->CompareFiles($arIBlocksFiles, $arDirFiles);
     }
 
-    private function GetIBlocksID(): array
-    {
-        $arIBlocksID = [];
+    private function GetIBlocksFiles(): array {
+        global $DB;
+        $arFiles = [];
 
-        $IBList = \CIBlock::GetList(["ID" => "ASC"], ["SITE_ID" => $this->siteID]);
-        while ($arRes = $IBList->Fetch()) {
-            $arIBlocksID[] = (int)$arRes["ID"];
+        $result = $DB->Query("SELECT FILE_NAME, SUBDIR FROM b_file WHERE MODULE_ID = 'iblock'");
+        while ($row = $result->Fetch()) {
+            $arFiles[] = $this->docRoot.$this->bxFilesDir."/".$row["SUBDIR"]."/".$row["FILE_NAME"];
         }
 
-        return $arIBlocksID;
+        return $arFiles;
     }
 
     private function GetDirFiles(): array
@@ -60,108 +56,8 @@ class IBlockFilesCleaner
         return $arFiles;
     }
 
-    private function GetIBlocksFiles(array $arIBlocksID): array
-    {
-        $arIBlocksElementsFiles = $this->GetIBlocksElementsFiles($arIBlocksID);
-        $arIBlocksSectionsFiles = $this->GetIBlocksSectionsFiles($arIBlocksID);
-
-        return $this->MergeFiles($arIBlocksElementsFiles, $arIBlocksSectionsFiles);
-    }
-
-    private function GetIBlocksElementsFiles(array $arIBlocksID): array
-    {
-        $arFiles = [];
-
-        $arSelect = ["ID", "IBLOCK_ID", "PREVIEW_PICTURE", "DETAIL_PICTURE"];
-        $arFilter = ["IBLOCK_ID" => $arIBlocksID];
-        $res = \CIBlockElement::GetList(["ID" => "ASC"], $arFilter, false, false, $arSelect);
-        while ($ob = $res->GetNextElement()) {
-            $arFields = $ob->GetFields();
-            $arProps = $ob->GetProperties();
-
-            $arFiles[] = \CFile::GetPath($arFields["PREVIEW_PICTURE"]);
-            $arFiles[] = \CFile::GetPath($arFields["DETAIL_PICTURE"]);
-
-            foreach ($arProps as $k => $prop) {
-                if ($this->propertyFileType !== $prop["PROPERTY_TYPE"]) continue;
-
-                if ("Y" === $prop["MULTIPLE"]) {
-                    foreach ($prop["VALUE"] as $fileID) {
-                        $arFiles[] = \CFile::GetPath($fileID);
-                    }
-                } else {
-                    $arFiles[] = \CFile::GetPath($prop["VALUE"]);
-                }
-            }
-
-            $arFiles = array_values(array_diff($arFiles, [null]));
-        }
-
-        return $arFiles;
-    }
-
-    private function GetIBlocksSectionsFiles(array $arIBlocksID): array
-    {
-        $arFiles = [];
-        $arSectionFileProps = ["PICTURE", "DETAIL_PICTURE"];
-        $arSelect = ["ID", "IBLOCK_ID", "NAME"];
-
-        $arSectionFields = $this->GetSectionFields();
-
-        foreach ($arIBlocksID as $iblockID) {
-            $arSectionFileProps = array_merge($arSectionFileProps, $arSectionFields);
-            $arSelect = array_merge($arSelect, $arSectionFileProps);
-            $arFilter = ["IBLOCK_ID" => $iblockID];
-            $res = \CIBlockSection::GetList(["ID" => "ASC"], $arFilter, false, $arSelect, false);
-            while ($ob = $res->GetNext()) {
-                foreach ($ob as $field => $value) {
-                    if (in_array($field, $arSectionFileProps)) {
-                        if (is_array($value)) {
-                            foreach ($value as $v) {
-                                $arFiles[] = \CFile::GetPath($v);
-                            }
-                        } else {
-                            $arFiles[] = \CFile::GetPath($value);
-                        }
-                    }
-                }
-            }
-        }
-
-        foreach ($arFiles as $i => $path) {
-            if (false === strpos($path, $this->iblockFilesDir)) {
-                unset($arFiles[$i]);
-            }
-        }
-
-        return array_values(array_diff($arFiles, [null]));
-    }
-
-    private function GetSectionFields(): array
-    {
-        $arSectionFields = [];
-
-        $rsData = \CUserTypeEntity::GetList(["SORT" => "ASC"], ["USER_TYPE_ID" => "file"]);
-        while ($arRes = $rsData->Fetch()) {
-            if (preg_match($this->regexpSectionUserFields, $arRes["ENTITY_ID"])) {
-                $arSectionFields[$arRes["FIELD_NAME"]] = 1;
-            }
-        }
-
-        return array_keys($arSectionFields);
-    }
-
-    private function MergeFiles(array ...$arrays): array
-    {
-        return call_user_func_array("array_merge", func_get_args());
-    }
-
     private function CompareFiles(array $arIBlockFiles, array $arDirFiles): array
     {
-        array_walk($arIBlockFiles, function (&$path) {
-            $path = $this->docRoot . $path;
-        });
-
         return array_diff($arDirFiles, $arIBlockFiles);
     }
 
@@ -186,7 +82,7 @@ class IBlockFilesCleaner
         if (!is_dir($path)) return;
 
         $arEls = scandir($path);
-        if (empty(array_diff($arEls, ['.', '..']))) {
+        if (empty(array_diff($arEls, [".", ".."]))) {
             rmdir($path);
             $this->RemoveDirRecursive(dirname($path));
         }
