@@ -26,8 +26,6 @@ $productCatalogID = $SKU->AddProduct(
     $arPropsElement
 );
 
-dd($productCatalogID,0);
-
 if ($productCatalogID["ID"]) {
     $arFieldsOffer = [
         "AVAILABLE" => "Y",
@@ -48,5 +46,4 @@ if ($productCatalogID["ID"]) {
         $arPropsOffer,
         $arFieldsOffer
     );
-    dd($offer);
 }
